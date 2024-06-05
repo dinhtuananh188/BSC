@@ -1,0 +1,364 @@
+﻿<!-- Views/Home/Index.cshtml -->
+@model Tuple<List<NhietDo>, List<DoAm>, List<AmThanh>, List<Ga>, List<AnhSang>>
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="row">
+    <div class="col-md-6">
+        <h2>Tại thời gian thực:</h2>
+        <p>Nhiệt độ: <span id="realTimeTemperature"></span></p>
+        <p>Độ ẩm: <span id="realTimeHumidity"></span></p>
+        <p>Âm thanh: <span id="realTimeAmThanh"></span></p>
+        <p>Khí Gas: <span id="realTimeGas"></span></p>
+        <p>Ánh sáng: <span id="realTimeAnhSang"></span></p>
+        <script>
+            function updateRealTimeData(data) {
+                $("#realTimeTemperature").text(data.nhietDo);
+                $("#realTimeHumidity").text(data.doAm);
+                $("#realTimeAmThanh").text(data.amThanh);
+                $("#realTimeGas").text(data.ga);
+                $("#realTimeAnhSang").text(data.anhSang);
+            }
+
+            function fetchLatestData() {
+                $.ajax({
+                    url: '/Home/GetLatestData',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        updateRealTimeData(data);
+                        setTimeout(fetchLatestData, 1000);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching data:', error);
+                        setTimeout(fetchLatestData, 1000); // Retry after a delay in case of error
+                    }
+                });
+            }
+
+            $(document).ready(function () {
+                fetchLatestData();
+            });
+        </script>
+    </div>
+    <div class="col-md-6">
+        <h2>Trạng thái</h2>
+        <p>Trạng thái Nhiệt độ: <span id="realTemperature"></span></p>
+        <p>Trạng thái Độ ẩm: <span id="realHumidity"></span></p>
+        <p>Trạng thái Âm thanh: <span id="realAmThanh"></span></p>
+        <p>Trạng thái Khí Gas: <span id="realGas"></span></p>
+        <p>Trạng thái Ánh sáng: <span id="realAnhSang"></span></p>
+        <script>
+            function updateRealData(data) {
+                $("#realTemperature").text(data.nhannhietDo);
+                $("#realHumidity").text(data.nhandoAm);
+                $("#realAmThanh").text(data.nhanamThanh);
+                $("#realGas").text(data.nhanga);
+                $("#realAnhSang").text(data.nhananhSang);
+            }
+
+            function fetchLatestDataType() {
+                $.ajax({
+                    url: '/Home/GetLatestDataType',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        updateRealData(data);
+                        setTimeout(fetchLatestDataType, 1000);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching data Type:', error);
+                        setTimeout(fetchLatestDataType, 1000); // Retry after a delay in case of error
+                    }
+                });
+            }
+
+            $(document).ready(function () {
+                fetchLatestDataType();
+            });
+        </script>
+    </div>
+</div>
+<div class="row">
+    <!-- Chart 1 - NhietDo -->
+    <div class="col-md-6">
+        <h3>Nhiệt Độ và Độ Ẩm</h3>
+        <canvas id="lineChart" style="max-width: 100%; max-height: 400px;"></canvas>
+
+        <script>
+            var chart; // Declare chart variable in the global scope
+
+            // Function to update the charts
+            function updateCharts() {
+                // Send an Ajax request to get new data from the server
+                $.ajax({
+                    url: '/Home/GetData',
+                    method: 'GET',
+                    success: function (newData) {
+                        // Update data for each chart
+                        updateChart(chart, newData.nhietDo, newData.doAm, 'y-axis-1', 'y-axis-2');
+                    },
+                    error: function (error) {
+                        console.log('Error fetching data: ' + error);
+                    }
+                });
+            }
+
+            // Function to update a specific chart
+            function updateChart(chart, data, secondData) {
+                // Update data for the chart
+                chart.data.labels = data.map(item => item.thoiGian);
+                chart.data.datasets[0].data = data.map(item => item.giaTri);
+
+                // If there is second data, update it
+                if (secondData) {
+                    chart.data.datasets[1].data = secondData.map(item => item.giaTri);
+                }
+                // Update the chart
+                chart.update();
+            }
+
+            // Set up the initial chart
+            $(document).ready(function () {
+                // Lấy dữ liệu từ model
+                var nhietDoData = @Html.Raw(Json.Serialize(Model.Item1));
+                var doAmData = @Html.Raw(Json.Serialize(Model.Item2));
+
+                // Vẽ biểu đồ đường
+                var ctx = document.getElementById('lineChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: nhietDoData.map(item => item.thoiGian),
+                        datasets: [
+                            {
+                                label: 'Nhiệt Độ',
+                                data: nhietDoData.map(item => item.giaTri),
+                                borderColor: 'rgb(75, 192, 192)',
+                                borderWidth: 1,
+                                fill: false,
+                                yAxisID: 'y-axis-1'
+                            },
+                            {
+                                label: 'Độ Ẩm',
+                                data: doAmData.map(item => item.giaTri),
+                                borderColor: 'rgb(255, 99, 132)',
+                                borderWidth: 1,
+                                fill: false,
+                                yAxisID: 'y-axis-2'
+                            }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            yAxes: [
+                                {
+                                    id: 'y-axis-1',
+                                    type: 'linear',
+                                    position: 'left',
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Nhiệt Độ (đơn vị)'
+                                    }
+                                },
+                                {
+                                    id: 'y-axis-2',
+                                    type: 'linear',
+                                    position: 'right',
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Độ Ẩm (đơn vị)'
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                });
+            });
+
+            // Gọi hàm cập nhật mỗi khoảng thời gian cố định (ví dụ: mỗi 5 phút)
+            setInterval(updateCharts, 5000); // 5000 milliseconds = 5 seconds
+        </script>
+    </div>
+    <!-- Add similar sections for other charts -->
+
+    <!-- Chart 3 - AmThanh -->
+    <div class="col-md-6">
+        <h3>Âm Thanh</h3>
+        <canvas id="lineChart3" style="max-width: 100%; max-height: 400px;"></canvas>
+        <script>
+            var chart3; // Declare chart3 variable in the global scope
+
+            $(document).ready(function () {
+                var data3 = @Html.Raw(Json.Serialize(Model.Item3));
+                var ctx3 = document.getElementById('lineChart3').getContext('2d');
+                chart3 = new Chart(ctx3, {
+                    type: 'line',
+                    data: {
+                        labels: data3.map(item => item.thoiGian),
+                        datasets: [{
+                            label: 'GiaTri',
+                            data: data3.map(item => item.giaTri),
+                            borderColor: 'rgb(192, 192, 75)',
+                            borderWidth: 1,
+                            fill: false
+                        }]
+                    }
+                });
+            });
+
+            // Set up the timer to update chart3 periodically
+            setInterval(updateChart3, 5000);
+
+            function updateChart3() {
+                $.ajax({
+                    url: '/Home/GetData',
+                    method: 'GET',
+                    success: function (newData) {
+                        updateChart(chart3, newData.amThanh, null, null, null);
+                    },
+                    error: function (error) {
+                        console.log('Error fetching data: ' + error);
+                    }
+                });
+            }
+            function updateChart(chart3, data, secondData) {
+                // Update data for the chart
+                chart3.data.labels = data.map(item => item.thoiGian);
+                chart3.data.datasets[0].data = data.map(item => item.giaTri);
+
+                // If there is second data, update it
+                if (secondData) {
+                    chart.data.datasets[1].data = secondData.map(item => item.giaTri);
+                }
+
+
+
+                // Update the chart
+                chart3.update();
+            }
+        </script>
+    </div>
+
+</div>
+<!-- Chart 4 - Khí Gas -->
+<div class="row">
+    <div class="col-md-6">
+        <h3>Khí Gas</h3>
+        <canvas id="lineChart4" style="max-width: 100%; max-height: 400px;"></canvas>
+        <script>
+            var chart4; // Declare chart4 variable in the global scope
+
+            $(document).ready(function () {
+                var data4 = @Html.Raw(Json.Serialize(Model.Item4));
+                var ctx4 = document.getElementById('lineChart4').getContext('2d');
+                chart4 = new Chart(ctx4, {
+                    type: 'line',
+                    data: {
+                        labels: data4.map(item => item.thoiGian),
+                        datasets: [{
+                            label: 'GiaTri',
+                            data: data4.map(item => item.giaTri),
+                            borderColor: 'rgb(75, 192, 75)',
+                            borderWidth: 1,
+                            fill: false
+                        }]
+                    }
+                });
+            });
+
+            // Set up the timer to update chart4 periodically
+            setInterval(updateChart4, 5000);
+
+            function updateChart4() {
+                $.ajax({
+                    url: '/Home/GetData',
+                    method: 'GET',
+                    success: function (newData) {
+                        updateChart(chart4, newData.ga, null, null, null);
+                    },
+                    error: function (error) {
+                        console.log('Error fetching data: ' + error);
+                    }
+                });
+            }
+            function updateChart(chart4, data, secondData) {
+                // Update data for the chart
+                chart4.data.labels = data.map(item => item.thoiGian);
+                chart4.data.datasets[0].data = data.map(item => item.giaTri);
+
+                // If there is second data, update it
+                if (secondData) {
+                    chart.data.datasets[1].data = secondData.map(item => item.giaTri);
+                }
+
+
+
+                // Update the chart
+                chart4.update();
+            }
+        </script>
+    </div>
+
+    <!-- Chart 5 - Ánh Sáng -->
+    <div class="col-md-6">
+        <h3>Ánh Sáng</h3>
+        <canvas id="lineChart5" style="max-width: 100%; max-height: 400px;"></canvas>
+        <script>
+            var chart5; // Declare chart5 variable in the global scope
+
+            $(document).ready(function () {
+                var data5 = @Html.Raw(Json.Serialize(Model.Item5));
+                var ctx5 = document.getElementById('lineChart5').getContext('2d');
+                chart5 = new Chart(ctx5, {
+                    type: 'line',
+                    data: {
+                        labels: data5.map(item => item.thoiGian),
+                        datasets: [{
+                            label: 'GiaTri',
+                            data: data5.map(item => item.giaTri),
+                            borderColor: 'rgb(192, 75, 75)',
+                            borderWidth: 1,
+                            fill: false
+                        }]
+                    }
+                });
+            });
+
+            // Set up the timer to update chart5 periodically
+            setInterval(updateChart5, 5000);
+
+            function updateChart5() {
+                $.ajax({
+                    url: '/Home/GetData',
+                    method: 'GET',
+                    success: function (newData) {
+                        updateChart(chart5, newData.anhSang, null, null, null);
+                    },
+                    error: function (error) {
+                        console.log('Error fetching data: ' + error);
+                    }
+                });
+            }
+            function updateChart(chart5, data, secondData) {
+                // Update data for the chart
+                chart5.data.labels = data.map(item => item.thoiGian);
+                chart5.data.datasets[0].data = data.map(item => item.giaTri);
+
+                // If there is second data, update it
+                if (secondData) {
+                    chart.data.datasets[1].data = secondData.map(item => item.giaTri);
+                }
+
+
+
+                // Update the chart
+                chart5.update();
+            }
+        </script>
+    </div>
+</div>
+
+
+
+
